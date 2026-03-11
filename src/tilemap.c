@@ -1,7 +1,9 @@
 #include "tilemap.h"
+#include "particle.h"
 #include "constants.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 void tilemap_load(Tilemap *m, const char *file)
 {
@@ -99,6 +101,44 @@ void tilemap_render(Tilemap *m, SDL_Renderer *r, float scroll)
                 TILE_SIZE,
                 TILE_SIZE};
             SDL_RenderFillRect(r, &rect);
+        }
+    }
+}
+
+void tilemap_emit_fire_particles(Tilemap *m, float scroll, float dt)
+{
+    /* Particles per second emitted per visible top tile */
+    static const float RATE = 10.0f;
+
+    int startX = (int)(scroll / TILE_SIZE);
+    if (startX < 0)
+        startX = 0;
+    int endX = startX + SCREEN_W / TILE_SIZE + 2;
+    if (endX >= m->width)
+        endX = m->width - 1;
+
+    for (int x = startX; x <= endX; x++)
+    {
+        /* Scan top-to-bottom; first filled tile in column is the top surface */
+        for (int y = 0; y < m->height; y++)
+        {
+            if (m->data[y][x] == 0)
+                continue;
+
+            /* Emit RATE particles/sec from the top edge of this tile */
+            float expected = RATE * dt;
+            int count = (int)expected;
+            if ((float)rand() / (float)RAND_MAX < (expected - (float)count))
+                count++;
+
+            for (int n = 0; n < count; n++)
+            {
+                float wx = (float)(x * TILE_SIZE) +
+                           (float)(rand() % TILE_SIZE);
+                float wy = (float)(y * TILE_SIZE);
+                particles_emit(wx, wy, PARTICLE_FIRE);
+            }
+            break; /* Only the topmost tile per column */
         }
     }
 }

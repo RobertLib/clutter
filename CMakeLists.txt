@@ -23,6 +23,7 @@ add_executable(clutter
     src/tilemap.c
     src/renderer.c
     src/texture.c
+    src/particle.c
     "${EMBED_C}"
 )
 

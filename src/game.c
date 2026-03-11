@@ -5,6 +5,7 @@
 #include "enemy.h"
 #include "bullet.h"
 #include "tilemap.h"
+#include "particle.h"
 #include "assets_embedded.h"
 #include <stdlib.h>
 
@@ -26,6 +27,7 @@ void game_init(Game *g, SDL_Renderer *r)
 
     bullets_init();
     enemies_init();
+    particles_init();
 
     for (int i = 0; i < 5; i++)
         enemies_spawn(600.0f + i * 200.0f, 150.0f + i * 40.0f);
@@ -48,6 +50,8 @@ void game_update(Game *g, float dt)
     player_update(&g->player, dt);
     bullets_update(dt);
     enemies_update(dt);
+    tilemap_emit_fire_particles(&g->map, g->scroll, dt);
+    particles_update(dt);
 
     //----------------------------------------
     // player shooting
@@ -108,6 +112,7 @@ void game_render(Game *g)
     renderer_begin(g->renderer);
 
     tilemap_render(&g->map, g->renderer, g->scroll);
+    particles_render(g->renderer, g->scroll);
     player_render(&g->player, g->renderer);
     bullets_render(g->renderer);
     enemies_render(g->renderer, g->scroll);
