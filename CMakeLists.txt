@@ -25,6 +25,7 @@ add_executable(clutter
     src/texture.c
     src/particle.c
     src/camera.c
+    src/rope.c
     "${EMBED_C}"
 )
 

@@ -6,6 +6,7 @@
 #include "tilemap.h"
 #include "camera.h"
 #include "timer.h"
+#include "rope.h"
 
 typedef struct
 {
@@ -17,6 +18,8 @@ typedef struct
 
     Timer shoot_cooldown;
     Timer spawn_timer;
+
+    Rope rope;
 
     int score;
     float elapsed;
