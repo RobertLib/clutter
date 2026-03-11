@@ -122,7 +122,7 @@ void game_update(Game *g, float dt)
     {
         float ax = g->player.x + g->player.w * 0.5f;
         float ay = g->player.y + g->player.h;
-        rope_update(&g->rope, ax, ay, dt);
+        rope_update(&g->rope, ax, ay, dt, &g->map, g->camera.scroll);
     }
 
     bullets_update(dt);

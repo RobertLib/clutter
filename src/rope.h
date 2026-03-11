@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include "tilemap.h"
 
 // Number of rope segments (one more node than segments)
 #define ROPE_SEGMENTS 12
@@ -20,8 +21,15 @@ typedef struct
 typedef struct
 {
     RopeNode nodes[ROPE_SEGMENTS + 1]; // nodes[0] = anchor at plane bottom
+
+    float water_level;   // 0.0 = empty, 1.0 = full
+    float prev_anchor_x; // previous anchor position for velocity computation (screen-space)
+    float prev_anchor_y;
+    float spill_emit_acc; // time accumulator for spill particle emissions
 } Rope;
 
 void rope_init(Rope *r, float anchor_x, float anchor_y);
-void rope_update(Rope *r, float anchor_x, float anchor_y, float dt);
+// map + scroll are needed for water detection and particle emission
+void rope_update(Rope *r, float anchor_x, float anchor_y, float dt,
+                 const Tilemap *map, float scroll);
 void rope_render(const Rope *r, SDL_Renderer *renderer);
