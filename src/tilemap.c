@@ -34,7 +34,14 @@ void tilemap_load(Tilemap *m, const char *file)
             len = MAX_MAP_W;
 
         for (int x = 0; x < len; x++)
-            m->data[m->height][x] = (line[x] == '1') ? 1 : 0;
+        {
+            if (line[x] == '1')
+                m->data[m->height][x] = TILE_GROUND;
+            else if (line[x] == '2')
+                m->data[m->height][x] = TILE_WATER;
+            else
+                m->data[m->height][x] = 0;
+        }
 
         if (len > m->width)
             m->width = len;
@@ -64,7 +71,15 @@ void tilemap_load_mem(Tilemap *m, const unsigned char *data, unsigned int len)
             line_len = MAX_MAP_W;
 
         for (int x = 0; x < line_len; x++)
-            m->data[m->height][x] = (data[start + x] == '1') ? 1 : 0;
+        {
+            char ch = (char)data[start + x];
+            if (ch == '1')
+                m->data[m->height][x] = TILE_GROUND;
+            else if (ch == '2')
+                m->data[m->height][x] = TILE_WATER;
+            else
+                m->data[m->height][x] = 0;
+        }
 
         if (line_len > m->width)
             m->width = line_len;
@@ -81,8 +96,6 @@ void tilemap_render(Tilemap *m, SDL_Renderer *r, float scroll)
     int screen_tiles_y = SCREEN_H / TILE_SIZE + 2;
     int start_tile_x = (int)(scroll / TILE_SIZE);
 
-    SDL_SetRenderDrawColor(r, 100, 200, 100, 255);
-
     for (int y = 0; y < screen_tiles_y && y < m->height; y++)
     {
         for (int x = 0; x < screen_tiles_x; x++)
@@ -92,8 +105,14 @@ void tilemap_render(Tilemap *m, SDL_Renderer *r, float scroll)
             if (mapX < 0 || mapX >= m->width)
                 continue;
 
-            if (m->data[y][mapX] == 0)
+            int tile = m->data[y][mapX];
+            if (tile == 0)
                 continue;
+
+            if (tile == TILE_WATER)
+                SDL_SetRenderDrawColor(r, 30, 120, 220, 255);
+            else
+                SDL_SetRenderDrawColor(r, 100, 200, 100, 255);
 
             SDL_FRect rect = {
                 mapX * TILE_SIZE - scroll,
@@ -124,6 +143,10 @@ void tilemap_emit_fire_particles(Tilemap *m, float scroll, float dt)
         {
             if (m->data[y][x] == 0)
                 continue;
+
+            /* Only ground tiles emit fire */
+            if (m->data[y][x] != TILE_GROUND)
+                break;
 
             /* Emit RATE particles/sec from the top edge of this tile */
             float expected = RATE * dt;
@@ -165,4 +188,67 @@ bool tilemap_overlaps_rect(const Tilemap *m, float wx, float wy, float rw, float
                 return true;
 
     return false;
+}
+
+int tilemap_overlaps_type(const Tilemap *m, float wx, float wy, float rw, float rh)
+{
+    int col0 = (int)(wx / TILE_SIZE);
+    int col1 = (int)((wx + rw - 1.0f) / TILE_SIZE);
+    int row0 = (int)(wy / TILE_SIZE);
+    int row1 = (int)((wy + rh - 1.0f) / TILE_SIZE);
+
+    if (col0 < 0)
+        col0 = 0;
+    if (row0 < 0)
+        row0 = 0;
+    if (col1 >= m->width)
+        col1 = m->width - 1;
+    if (row1 >= m->height)
+        row1 = m->height - 1;
+
+    for (int row = row0; row <= row1; row++)
+        for (int col = col0; col <= col1; col++)
+            if (m->data[row][col] != 0)
+                return m->data[row][col];
+
+    return 0;
+}
+
+void tilemap_emit_water_particles(Tilemap *m, float scroll, float dt)
+{
+    static const float RATE = 0.8f;
+
+    int startX = (int)(scroll / TILE_SIZE);
+    if (startX < 0)
+        startX = 0;
+    int endX = startX + SCREEN_W / TILE_SIZE + 2;
+    if (endX >= m->width)
+        endX = m->width - 1;
+
+    for (int x = startX; x <= endX; x++)
+    {
+        for (int y = 0; y < m->height; y++)
+        {
+            if (m->data[y][x] == 0)
+                continue;
+
+            if (m->data[y][x] != TILE_WATER)
+                break;
+
+            /* Emit splash particles from the top edge of the water tile */
+            float expected = RATE * dt;
+            int count = (int)expected;
+            if ((float)rand() / (float)RAND_MAX < (expected - (float)count))
+                count++;
+
+            for (int n = 0; n < count; n++)
+            {
+                float wx = (float)(x * TILE_SIZE) +
+                           (float)(rand() % TILE_SIZE);
+                float wy = (float)(y * TILE_SIZE);
+                particles_emit(wx, wy, PARTICLE_WATER, 0, 0, 0);
+            }
+            break;
+        }
+    }
 }

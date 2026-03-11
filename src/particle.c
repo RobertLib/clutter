@@ -52,6 +52,11 @@ void particles_update(float dt)
             p->vy += 200.0f * dt;
             p->vx *= (1.0f - 3.0f * dt);
         }
+        else if (p->type == PARTICLE_WATER)
+        {
+            /* Water bubble rises and gently decelerates */
+            p->vy -= 20.0f * dt;
+        }
         else
         {
             /* Fire slows down as it rises – slight upward drag */
@@ -97,6 +102,15 @@ void particles_render(SDL_Renderer *r, float scroll)
                 bc = (Uint8)(p->base_b * (1.0f - u));
                 alpha = (Uint8)(255 * (1.0f - u));
             }
+        }
+        else if (p->type == PARTICLE_WATER)
+        {
+            /* Blue bubble: fade in then out */
+            float fade = (t < 0.5f) ? (t / 0.5f) : (1.0f - (t - 0.5f) / 0.5f);
+            rc = (Uint8)(30 * fade);
+            gc = (Uint8)(160 * fade);
+            bc = 255;
+            alpha = (Uint8)(180 * fade);
         }
         else if (t < 0.5f)
         {
@@ -161,6 +175,29 @@ void particles_emit(float world_x, float world_y, ParticleType type, Uint8 br, U
             p->base_b = bb;
             p->active = true;
             spawned++;
+        }
+        return;
+    }
+
+    if (type == PARTICLE_WATER)
+    {
+        /* Single rising bubble */
+        for (int i = 0; i < MAX_PARTICLES; i++)
+        {
+            Particle *p = &g_particles[i];
+            if (p->active)
+                continue;
+
+            p->active = true;
+            p->x = world_x;
+            p->y = world_y;
+            p->vx = rand_range(-10.0f, 10.0f);
+            p->vy = rand_range(-60.0f, -20.0f);
+            p->max_life = rand_range(0.3f, 0.6f);
+            p->life = p->max_life;
+            p->size = rand_range(3.0f, 7.0f);
+            p->type = PARTICLE_WATER;
+            return;
         }
         return;
     }

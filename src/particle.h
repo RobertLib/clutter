@@ -8,6 +8,7 @@ typedef enum
 {
     PARTICLE_FIRE,
     PARTICLE_EXPLOSION,
+    PARTICLE_WATER,
 } ParticleType;
 
 void particles_init(void);

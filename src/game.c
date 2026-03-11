@@ -93,11 +93,15 @@ void game_update(Game *g, float dt)
     {
         float wx = g->player.x + g->camera.scroll;
         float wy = g->player.y;
-        if (tilemap_overlaps_rect(&g->map, wx, wy, g->player.w, g->player.h))
+        int hit = tilemap_overlaps_type(&g->map, wx, wy, g->player.w, g->player.h);
+        if (hit != 0)
         {
-            particles_emit(wx + g->player.w * 0.5f,
-                           wy + g->player.h * 0.5f,
-                           PARTICLE_EXPLOSION, 255, 255, 0);
+            float cx = wx + g->player.w * 0.5f;
+            float cy = wy + g->player.h * 0.5f;
+            if (hit == TILE_WATER)
+                particles_emit(cx, cy, PARTICLE_EXPLOSION, 30, 120, 220);
+            else
+                particles_emit(cx, cy, PARTICLE_EXPLOSION, 255, 255, 0);
             player_terrain_death(&g->player);
         }
     }
@@ -106,6 +110,7 @@ void game_update(Game *g, float dt)
     bullets_update(dt);
     enemies_update(dt, g->camera.scroll);
     tilemap_emit_fire_particles(&g->map, g->camera.scroll, dt);
+    tilemap_emit_water_particles(&g->map, g->camera.scroll, dt);
     particles_update(dt);
 
     //----------------------------------------
