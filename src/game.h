@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "player.h"
 #include "tilemap.h"
+#include "camera.h"
 
 typedef struct
 {
@@ -11,8 +12,8 @@ typedef struct
 
     Player player;
     Tilemap map;
+    Camera camera;
 
-    float scroll;
     float shootCooldown;
     float spawnTimer;
 

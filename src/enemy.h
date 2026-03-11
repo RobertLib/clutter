@@ -17,8 +17,8 @@ typedef struct
 } Enemy;
 
 void enemies_init(void);
-void enemies_spawn(float x, float y);
-void enemies_update(float dt);
-void enemies_render(SDL_Renderer *r, float cameraX);
+void enemies_spawn(float x, float y, float vx);
+void enemies_update(float dt, float scroll);
+void enemies_render(SDL_Renderer *r, float scroll);
 int enemies_check_bullet_collisions(float scroll);
 bool enemies_collide_rect(float x, float y, float w, float h, float scroll);

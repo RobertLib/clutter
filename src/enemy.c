@@ -1,5 +1,6 @@
 #include "enemy.h"
 #include "bullet.h"
+#include "constants.h"
 
 static Enemy enemies[MAX_ENEMIES];
 
@@ -9,7 +10,7 @@ void enemies_init(void)
         enemies[i].active = false;
 }
 
-void enemies_spawn(float x, float y)
+void enemies_spawn(float x, float y, float vx)
 {
     for (int i = 0; i < MAX_ENEMIES; i++)
     {
@@ -18,13 +19,13 @@ void enemies_spawn(float x, float y)
             enemies[i].active = true;
             enemies[i].x = x;
             enemies[i].y = y;
-            enemies[i].vx = -ENEMY_SPEED;
+            enemies[i].vx = vx;
             return;
         }
     }
 }
 
-void enemies_update(float dt)
+void enemies_update(float dt, float scroll)
 {
     for (int i = 0; i < MAX_ENEMIES; i++)
     {
@@ -33,12 +34,14 @@ void enemies_update(float dt)
 
         enemies[i].x += enemies[i].vx * dt;
 
-        if (enemies[i].x < -200.0f)
+        // deactivate when well off-screen on either side
+        if (enemies[i].x + ENEMY_W < scroll - 200.0f ||
+            enemies[i].x > scroll + SCREEN_W + 200.0f)
             enemies[i].active = false;
     }
 }
 
-void enemies_render(SDL_Renderer *r, float cameraX)
+void enemies_render(SDL_Renderer *r, float scroll)
 {
     SDL_SetRenderDrawColor(r, 0, 255, 0, 255);
 
@@ -48,7 +51,7 @@ void enemies_render(SDL_Renderer *r, float cameraX)
             continue;
 
         SDL_FRect rect = {
-            enemies[i].x - cameraX,
+            enemies[i].x - scroll,
             enemies[i].y,
             ENEMY_W,
             ENEMY_H};

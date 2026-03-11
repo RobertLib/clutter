@@ -14,6 +14,7 @@ typedef struct
     float w, h;
     int hp;
     float hit_cooldown;
+    int facing; // +1 = right, -1 = left
 
 } Player;
 

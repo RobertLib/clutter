@@ -9,7 +9,7 @@ void bullets_init(void)
         bullets[i].active = false;
 }
 
-void bullets_spawn(float x, float y)
+void bullets_spawn(float x, float y, float vx)
 {
     for (int i = 0; i < MAX_BULLETS; i++)
     {
@@ -18,7 +18,7 @@ void bullets_spawn(float x, float y)
             bullets[i].active = true;
             bullets[i].x = x;
             bullets[i].y = y;
-            bullets[i].vx = BULLET_SPEED;
+            bullets[i].vx = vx;
             return;
         }
     }
@@ -33,7 +33,7 @@ void bullets_update(float dt)
 
         bullets[i].x += bullets[i].vx * dt;
 
-        if (bullets[i].x > (float)SCREEN_W)
+        if (bullets[i].x > (float)SCREEN_W || bullets[i].x + BULLET_W < 0.0f)
             bullets[i].active = false;
     }
 }

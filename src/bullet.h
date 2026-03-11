@@ -17,7 +17,7 @@ typedef struct
 } Bullet;
 
 void bullets_init(void);
-void bullets_spawn(float x, float y);
+void bullets_spawn(float x, float y, float vx);
 void bullets_update(float dt);
 void bullets_render(SDL_Renderer *r);
 bool bullets_check_hit(float x, float y, float w, float h);

@@ -8,6 +8,7 @@ void player_init(Player *p, float x, float y)
     p->h = PLAYER_H;
     p->hp = PLAYER_MAX_HP;
     p->hit_cooldown = 0.0f;
+    p->facing = 1;
 }
 
 void player_update(Player *p, float dt)
@@ -18,6 +19,18 @@ void player_update(Player *p, float dt)
 
     if (p->hit_cooldown > 0.0f)
         p->hit_cooldown -= dt;
+
+    if (k[SDL_SCANCODE_LEFT])
+    {
+        p->x -= PLAYER_SPEED * dt;
+        p->facing = -1;
+    }
+
+    if (k[SDL_SCANCODE_RIGHT])
+    {
+        p->x += PLAYER_SPEED * dt;
+        p->facing = 1;
+    }
 
     if (k[SDL_SCANCODE_UP])
         p->y -= PLAYER_SPEED * dt;
