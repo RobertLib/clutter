@@ -1,5 +1,6 @@
 #include "enemy.h"
 #include "bullet.h"
+#include "particle.h"
 #include "constants.h"
 
 static Enemy enemies[MAX_ENEMIES];
@@ -73,6 +74,9 @@ int enemies_check_bullet_collisions(float scroll)
         float sx = enemies[i].x - scroll;
         if (bullets_check_hit(sx, enemies[i].y, ENEMY_W, ENEMY_H))
         {
+            particles_emit(enemies[i].x + ENEMY_W * 0.5f,
+                           enemies[i].y + ENEMY_H * 0.5f,
+                           PARTICLE_EXPLOSION, 0, 255, 0);
             enemies[i].active = false;
             killed++;
         }
@@ -95,6 +99,9 @@ bool enemies_collide_rect(float x, float y, float w, float h, float scroll)
             enemies[i].y < y + h &&
             enemies[i].y + ENEMY_H > y)
         {
+            particles_emit(enemies[i].x + ENEMY_W * 0.5f,
+                           enemies[i].y + ENEMY_H * 0.5f,
+                           PARTICLE_EXPLOSION, 0, 255, 0);
             enemies[i].active = false;
             return true;
         }

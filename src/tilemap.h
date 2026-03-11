@@ -19,3 +19,4 @@ void tilemap_load(Tilemap *m, const char *file);
 void tilemap_load_mem(Tilemap *m, const unsigned char *data, unsigned int len);
 void tilemap_render(Tilemap *m, SDL_Renderer *r, float scroll);
 void tilemap_emit_fire_particles(Tilemap *m, float scroll, float dt);
+bool tilemap_overlaps_rect(const Tilemap *m, float wx, float wy, float rw, float rh);

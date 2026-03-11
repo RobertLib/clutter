@@ -5,6 +5,7 @@
 #include "player.h"
 #include "tilemap.h"
 #include "camera.h"
+#include "timer.h"
 
 typedef struct
 {
@@ -14,8 +15,8 @@ typedef struct
     Tilemap map;
     Camera camera;
 
-    float shootCooldown;
-    float spawnTimer;
+    Timer shoot_cooldown;
+    Timer spawn_timer;
 
     int score;
     float elapsed;

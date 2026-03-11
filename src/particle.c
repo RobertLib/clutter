@@ -1,6 +1,7 @@
 #include "particle.h"
 #include "constants.h"
 #include <stdlib.h>
+#include <math.h>
 
 typedef struct
 {
@@ -10,6 +11,8 @@ typedef struct
     float max_life;
     float size;
     bool active;
+    ParticleType type;
+    Uint8 base_r, base_g, base_b;
 } Particle;
 
 static Particle g_particles[MAX_PARTICLES];
@@ -43,8 +46,17 @@ void particles_update(float dt)
         p->x += p->vx * dt;
         p->y += p->vy * dt;
 
-        /* Fire slows down as it rises – slight upward drag */
-        p->vy += 35.0f * dt;
+        if (p->type == PARTICLE_EXPLOSION)
+        {
+            /* Explosion falls with gravity and loses horizontal speed */
+            p->vy += 200.0f * dt;
+            p->vx *= (1.0f - 3.0f * dt);
+        }
+        else
+        {
+            /* Fire slows down as it rises – slight upward drag */
+            p->vy += 35.0f * dt;
+        }
     }
 }
 
@@ -63,7 +75,30 @@ void particles_render(SDL_Renderer *r, float scroll)
 
         Uint8 rc, gc, bc, alpha;
 
-        if (t < 0.5f)
+        if (p->type == PARTICLE_EXPLOSION)
+        {
+            /* Fade from white flash through base color to transparent */
+            float br = (float)p->base_r / 255.0f;
+            float bg = (float)p->base_g / 255.0f;
+            float bb = (float)p->base_b / 255.0f;
+            if (t < 0.25f)
+            {
+                float u = t / 0.25f;
+                rc = (Uint8)(255 * (1.0f - u * (1.0f - br)));
+                gc = (Uint8)(255 * (1.0f - u * (1.0f - bg)));
+                bc = (Uint8)(255 * (1.0f - u * (1.0f - bb)));
+                alpha = 255;
+            }
+            else
+            {
+                float u = (t - 0.25f) / 0.75f;
+                rc = (Uint8)(p->base_r * (1.0f - u));
+                gc = (Uint8)(p->base_g * (1.0f - u));
+                bc = (Uint8)(p->base_b * (1.0f - u));
+                alpha = (Uint8)(255 * (1.0f - u));
+            }
+        }
+        else if (t < 0.5f)
         {
             float u = t / 0.5f; /* 0 -> 1 over first half */
             rc = 255;
@@ -99,8 +134,38 @@ void particles_render(SDL_Renderer *r, float scroll)
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
 }
 
-void particles_emit(float world_x, float world_y, ParticleType type)
+void particles_emit(float world_x, float world_y, ParticleType type, Uint8 br, Uint8 bg, Uint8 bb)
 {
+    if (type == PARTICLE_EXPLOSION)
+    {
+        /* Burst of 40 particles in random directions */
+        int spawned = 0;
+        for (int i = 0; i < MAX_PARTICLES && spawned < 40; i++)
+        {
+            Particle *p = &g_particles[i];
+            if (p->active)
+                continue;
+
+            float angle = rand_range(0.0f, 6.2832f);
+            float speed = rand_range(60.0f, 260.0f);
+            p->x = world_x;
+            p->y = world_y;
+            p->vx = cosf(angle) * speed;
+            p->vy = sinf(angle) * speed;
+            p->max_life = rand_range(0.3f, 0.8f);
+            p->life = p->max_life;
+            p->size = rand_range(4.0f, 12.0f);
+            p->type = PARTICLE_EXPLOSION;
+            p->base_r = br;
+            p->base_g = bg;
+            p->base_b = bb;
+            p->active = true;
+            spawned++;
+        }
+        return;
+    }
+
+    /* PARTICLE_FIRE – single particle, color params ignored */
     for (int i = 0; i < MAX_PARTICLES; i++)
     {
         Particle *p = &g_particles[i];
@@ -110,16 +175,12 @@ void particles_emit(float world_x, float world_y, ParticleType type)
         p->active = true;
         p->x = world_x;
         p->y = world_y;
-
-        if (type == PARTICLE_FIRE)
-        {
-            p->vx = rand_range(-18.0f, 18.0f);
-            p->vy = rand_range(-110.0f, -55.0f);
-            p->max_life = rand_range(0.5f, 1.3f);
-            p->life = p->max_life;
-            p->size = rand_range(4.0f, 9.0f);
-        }
-
+        p->vx = rand_range(-18.0f, 18.0f);
+        p->vy = rand_range(-110.0f, -55.0f);
+        p->max_life = rand_range(0.5f, 1.3f);
+        p->life = p->max_life;
+        p->size = rand_range(4.0f, 9.0f);
+        p->type = PARTICLE_FIRE;
         return;
     }
     /* Pool exhausted – silently drop */

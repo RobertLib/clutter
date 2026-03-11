@@ -7,18 +7,22 @@ void player_init(Player *p, float x, float y)
     p->w = PLAYER_W;
     p->h = PLAYER_H;
     p->hp = PLAYER_MAX_HP;
-    p->hit_cooldown = 0.0f;
+    timer_clear(&p->hit_cooldown);
     p->facing = 1;
+    p->is_dying = false;
+    timer_clear(&p->dying_timer);
 }
 
 void player_update(Player *p, float dt)
 {
+    if (p->is_dying)
+        return;
+
     const bool *k = SDL_GetKeyboardState(NULL);
     if (!k)
         return;
 
-    if (p->hit_cooldown > 0.0f)
-        p->hit_cooldown -= dt;
+    timer_tick(&p->hit_cooldown, dt);
 
     if (k[SDL_SCANCODE_LEFT])
     {
@@ -47,8 +51,11 @@ void player_update(Player *p, float dt)
 
 void player_render(Player *p, SDL_Renderer *r)
 {
+    if (p->is_dying)
+        return;
+
     // blink during invincibility
-    if (p->hit_cooldown > 0.0f && (int)(p->hit_cooldown * 10.0f) % 2 == 0)
+    if (timer_running(&p->hit_cooldown) && (int)(p->hit_cooldown.t * 10.0f) % 2 == 0)
         return;
 
     SDL_FRect rect = {p->x, p->y, p->w, p->h};
@@ -58,14 +65,24 @@ void player_render(Player *p, SDL_Renderer *r)
 
 void player_take_hit(Player *p)
 {
-    if (p->hit_cooldown > 0.0f)
+    if (timer_running(&p->hit_cooldown))
         return;
     if (p->hp > 0)
         p->hp--;
-    p->hit_cooldown = 1.5f;
+    timer_set(&p->hit_cooldown, 1.5f);
 }
 
 bool player_is_alive(const Player *p)
 {
     return p->hp > 0;
+}
+
+void player_terrain_death(Player *p)
+{
+    if (p->is_dying)
+        return;
+    p->is_dying = true;
+    timer_set(&p->dying_timer, 1.5f);
+    if (p->hp > 0)
+        p->hp--;
 }

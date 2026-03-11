@@ -13,8 +13,8 @@
 void game_init(Game *g, SDL_Renderer *r)
 {
     g->renderer = r;
-    g->shootCooldown = 0;
-    g->spawnTimer = 0;
+    timer_clear(&g->shoot_cooldown);
+    timer_set(&g->spawn_timer, SPAWN_INTERVAL);
     g->score = 0;
     g->elapsed = 0.0f;
     g->game_over = false;
@@ -61,6 +61,47 @@ void game_update(Game *g, float dt)
 
     player_update(&g->player, dt);
 
+    //----------------------------------------
+    // dying timer – terrain death animation
+    //----------------------------------------
+
+    if (g->player.is_dying)
+    {
+        timer_tick(&g->player.dying_timer, dt);
+        if (timer_expired(&g->player.dying_timer))
+        {
+            if (g->player.hp <= 0)
+            {
+                g->game_over = true;
+                return;
+            }
+            // Respawn at the starting position
+            camera_init(&g->camera, g->camera.level_w);
+            g->player.x = (float)SCREEN_W / 2.0f - PLAYER_W / 2.0f;
+            g->player.y = (float)SCREEN_H / 2.0f - PLAYER_H / 2.0f;
+            g->player.is_dying = false;
+            timer_clear(&g->player.dying_timer);
+            timer_set(&g->player.hit_cooldown, 2.0f);
+        }
+    }
+
+    //----------------------------------------
+    // terrain collision
+    //----------------------------------------
+
+    if (!g->player.is_dying)
+    {
+        float wx = g->player.x + g->camera.scroll;
+        float wy = g->player.y;
+        if (tilemap_overlaps_rect(&g->map, wx, wy, g->player.w, g->player.h))
+        {
+            particles_emit(wx + g->player.w * 0.5f,
+                           wy + g->player.h * 0.5f,
+                           PARTICLE_EXPLOSION, 255, 255, 0);
+            player_terrain_death(&g->player);
+        }
+    }
+
     camera_update(&g->camera, &g->player, dt);
     bullets_update(dt);
     enemies_update(dt, g->camera.scroll);
@@ -72,9 +113,9 @@ void game_update(Game *g, float dt)
     //----------------------------------------
 
     const bool *keys = SDL_GetKeyboardState(NULL);
-    g->shootCooldown -= dt;
+    timer_tick(&g->shoot_cooldown, dt);
 
-    if (keys && keys[SDL_SCANCODE_SPACE] && g->shootCooldown <= 0)
+    if (!g->player.is_dying && keys && keys[SDL_SCANCODE_SPACE] && timer_expired(&g->shoot_cooldown))
     {
         float bvx = BULLET_SPEED * g->player.facing;
         float bx = (g->player.facing > 0)
@@ -84,7 +125,7 @@ void game_update(Game *g, float dt)
                       g->player.y + g->player.h / 2.0f - BULLET_H / 2.0f,
                       bvx);
 
-        g->shootCooldown = SHOOT_COOLDOWN;
+        timer_set(&g->shoot_cooldown, SHOOT_COOLDOWN);
     }
 
     //----------------------------------------
@@ -98,7 +139,8 @@ void game_update(Game *g, float dt)
     // enemy <-> player collisions
     //----------------------------------------
 
-    if (enemies_collide_rect(g->player.x, g->player.y,
+    if (!g->player.is_dying &&
+        enemies_collide_rect(g->player.x, g->player.y,
                              g->player.w, g->player.h,
                              g->camera.scroll))
     {
@@ -112,13 +154,13 @@ void game_update(Game *g, float dt)
     // spawn new enemies over time
     //----------------------------------------
 
-    g->spawnTimer += dt;
-    float spawnInterval = SPAWN_INTERVAL - g->elapsed * 0.02f;
-    if (spawnInterval < 0.5f)
-        spawnInterval = 0.5f;
-    if (g->spawnTimer >= spawnInterval)
+    timer_tick(&g->spawn_timer, dt);
+    if (timer_expired(&g->spawn_timer))
     {
-        g->spawnTimer = 0;
+        float spawn_interval = SPAWN_INTERVAL - g->elapsed * 0.02f;
+        if (spawn_interval < 0.5f)
+            spawn_interval = 0.5f;
+        timer_set(&g->spawn_timer, spawn_interval);
         // randomly spawn from left or right side of the screen
         float side = (rand() % 2 == 0) ? 1.0f : -1.0f;
         float ex = g->camera.scroll + SCREEN_W * 0.5f + side * (SCREEN_W * 0.5f + 120.0f);

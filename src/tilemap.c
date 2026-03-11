@@ -77,17 +77,17 @@ void tilemap_load_mem(Tilemap *m, const unsigned char *data, unsigned int len)
 
 void tilemap_render(Tilemap *m, SDL_Renderer *r, float scroll)
 {
-    int screenTilesX = SCREEN_W / TILE_SIZE + 2;
-    int screenTilesY = SCREEN_H / TILE_SIZE + 2;
-    int startTileX = (int)(scroll / TILE_SIZE);
+    int screen_tiles_x = SCREEN_W / TILE_SIZE + 2;
+    int screen_tiles_y = SCREEN_H / TILE_SIZE + 2;
+    int start_tile_x = (int)(scroll / TILE_SIZE);
 
     SDL_SetRenderDrawColor(r, 100, 200, 100, 255);
 
-    for (int y = 0; y < screenTilesY && y < m->height; y++)
+    for (int y = 0; y < screen_tiles_y && y < m->height; y++)
     {
-        for (int x = 0; x < screenTilesX; x++)
+        for (int x = 0; x < screen_tiles_x; x++)
         {
-            int mapX = startTileX + x;
+            int mapX = start_tile_x + x;
 
             if (mapX < 0 || mapX >= m->width)
                 continue;
@@ -136,9 +136,33 @@ void tilemap_emit_fire_particles(Tilemap *m, float scroll, float dt)
                 float wx = (float)(x * TILE_SIZE) +
                            (float)(rand() % TILE_SIZE);
                 float wy = (float)(y * TILE_SIZE);
-                particles_emit(wx, wy, PARTICLE_FIRE);
+                particles_emit(wx, wy, PARTICLE_FIRE, 0, 0, 0);
             }
             break; /* Only the topmost tile per column */
         }
     }
+}
+
+bool tilemap_overlaps_rect(const Tilemap *m, float wx, float wy, float rw, float rh)
+{
+    int col0 = (int)(wx / TILE_SIZE);
+    int col1 = (int)((wx + rw - 1.0f) / TILE_SIZE);
+    int row0 = (int)(wy / TILE_SIZE);
+    int row1 = (int)((wy + rh - 1.0f) / TILE_SIZE);
+
+    if (col0 < 0)
+        col0 = 0;
+    if (row0 < 0)
+        row0 = 0;
+    if (col1 >= m->width)
+        col1 = m->width - 1;
+    if (row1 >= m->height)
+        row1 = m->height - 1;
+
+    for (int row = row0; row <= row1; row++)
+        for (int col = col0; col <= col1; col++)
+            if (m->data[row][col] != 0)
+                return true;
+
+    return false;
 }
