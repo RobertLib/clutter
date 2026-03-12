@@ -100,7 +100,7 @@ void rope_update(Rope *r, float anchor_x, float anchor_y, float dt,
 
     // --- 4. Water detection and bucket filling ---
     const RopeNode *tip = &r->nodes[ROPE_SEGMENTS];
-    float bucket_wx = tip->x + scroll;
+    float bucket_wx = tip->x; // nodes are in world-space
     float bucket_wy = tip->y;
 
     int tile = tilemap_overlaps_type(map,
@@ -115,12 +115,16 @@ void rope_update(Rope *r, float anchor_x, float anchor_y, float dt,
     }
 
     // --- 5. Water spilling on fast movement ---
-    // Horizontal component dominates (centrifugal effect when turning)
-    float anchor_speed = fabsf(avx) * 0.75f + fabsf(avy) * 0.25f;
+    // Use the TIP velocity relative to the anchor – this captures actual swinging
+    // (during steady cruise both move at ~same speed so rel ≈ 0; on sharp turn the
+    //  tip lags, making rel large, which triggers the spill).
+    float tip_vx = (tip->x - tip->px) / (dt > 0.0001f ? dt : 0.0001f);
+    float tip_vy = (tip->y - tip->py) / (dt > 0.0001f ? dt : 0.0001f);
+    float rel_speed = fabsf(tip_vx - avx) * 0.75f + fabsf(tip_vy - avy) * 0.25f;
 
-    if (anchor_speed > BUCKET_SPILL_THRESHOLD && r->water_level > 0.0f)
+    if (rel_speed > BUCKET_SPILL_THRESHOLD && r->water_level > 0.0f)
     {
-        float excess = (anchor_speed - BUCKET_SPILL_THRESHOLD) / BUCKET_SPILL_THRESHOLD;
+        float excess = (rel_speed - BUCKET_SPILL_THRESHOLD) / BUCKET_SPILL_THRESHOLD;
         float spill_dt = BUCKET_SPILL_RATE * (1.0f + excess) * dt;
         r->water_level -= spill_dt;
         if (r->water_level < 0.0f)
@@ -143,7 +147,7 @@ void rope_update(Rope *r, float anchor_x, float anchor_y, float dt,
     }
 }
 
-void rope_render(const Rope *r, SDL_Renderer *renderer)
+void rope_render(const Rope *r, SDL_Renderer *renderer, float scroll)
 {
     // --- Draw rope segments ---
     SDL_SetRenderDrawColor(renderer, 180, 140, 80, 255);
@@ -152,14 +156,18 @@ void rope_render(const Rope *r, SDL_Renderer *renderer)
     {
         const RopeNode *a = &r->nodes[i];
         const RopeNode *b = &r->nodes[i + 1];
-        SDL_RenderLine(renderer, a->x, a->y, b->x, b->y);
+        SDL_RenderLine(renderer, a->x - scroll, a->y, b->x - scroll, b->y);
     }
 
     // --- Compute bucket orientation from the last rope segment ---
     const RopeNode *tip = &r->nodes[ROPE_SEGMENTS];
     const RopeNode *pre = &r->nodes[ROPE_SEGMENTS - 1];
 
-    float dx = tip->x - pre->x;
+    // Screen-space x positions for rendering
+    float tip_sx = tip->x - scroll;
+    float pre_sx = pre->x - scroll;
+
+    float dx = tip_sx - pre_sx;
     float dy = tip->y - pre->y;
     float len = sqrtf(dx * dx + dy * dy);
 
@@ -176,10 +184,10 @@ void rope_render(const Rope *r, SDL_Renderer *renderer)
 
     float hw = BUCKET_W * 0.5f;
 
-    // Four corners of the bucket
-    float rim_lx = tip->x - px_dir * hw;
+    // Four corners of the bucket (screen-space)
+    float rim_lx = tip_sx - px_dir * hw;
     float rim_ly = tip->y - py_dir * hw;
-    float rim_rx = tip->x + px_dir * hw;
+    float rim_rx = tip_sx + px_dir * hw;
     float rim_ry = tip->y + py_dir * hw;
 
     float bot_lx = rim_lx + ax * BUCKET_H;

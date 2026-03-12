@@ -23,7 +23,7 @@ typedef struct
     RopeNode nodes[ROPE_SEGMENTS + 1]; // nodes[0] = anchor at plane bottom
 
     float water_level;   // 0.0 = empty, 1.0 = full
-    float prev_anchor_x; // previous anchor position for velocity computation (screen-space)
+    float prev_anchor_x; // previous anchor position for velocity computation (world-space)
     float prev_anchor_y;
     float spill_emit_acc; // time accumulator for spill particle emissions
 } Rope;
@@ -32,4 +32,4 @@ void rope_init(Rope *r, float anchor_x, float anchor_y);
 // map + scroll are needed for water detection and particle emission
 void rope_update(Rope *r, float anchor_x, float anchor_y, float dt,
                  const Tilemap *map, float scroll);
-void rope_render(const Rope *r, SDL_Renderer *renderer);
+void rope_render(const Rope *r, SDL_Renderer *renderer, float scroll);

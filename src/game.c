@@ -31,7 +31,7 @@ void game_init(Game *g, SDL_Renderer *r)
                 (float)SCREEN_W / 2.0f - PLAYER_W / 2.0f,
                 (float)SCREEN_H / 2.0f - PLAYER_H / 2.0f);
 
-    float rope_ax = g->player.x + PLAYER_W * 0.5f;
+    float rope_ax = g->player.x + g->camera.scroll + PLAYER_W * 0.5f; // world-space
     float rope_ay = g->player.y + PLAYER_H;
     rope_init(&g->rope, rope_ax, rope_ay);
 
@@ -84,12 +84,16 @@ void game_update(Game *g, float dt)
             camera_init(&g->camera, g->camera.level_w);
             g->player.x = (float)SCREEN_W / 2.0f - PLAYER_W / 2.0f;
             g->player.y = (float)SCREEN_H / 2.0f - PLAYER_H / 2.0f;
+            g->player.vx = PLANE_FORWARD_SPEED;
+            g->player.vy = 0.0f;
+            g->player.angle = 0.0f;
+            g->player.facing = 1;
             g->player.is_dying = false;
             timer_clear(&g->player.dying_timer);
             timer_set(&g->player.hit_cooldown, 2.0f);
             // Reset rope so nodes don't inherit velocity from the teleport
             rope_init(&g->rope,
-                      g->player.x + g->player.w * 0.5f,
+                      g->player.x + g->player.w * 0.5f + g->camera.scroll,
                       g->player.y + g->player.h);
         }
     }
@@ -117,10 +121,10 @@ void game_update(Game *g, float dt)
 
     camera_update(&g->camera, &g->player, dt);
 
-    // Update rope – anchor at the bottom-center of the plane (screen-space)
+    // Update rope – anchor at the bottom-center of the plane (world-space)
     if (!g->player.is_dying)
     {
-        float ax = g->player.x + g->player.w * 0.5f;
+        float ax = g->player.x + g->player.w * 0.5f + g->camera.scroll;
         float ay = g->player.y + g->player.h;
         rope_update(&g->rope, ax, ay, dt, &g->map, g->camera.scroll);
     }
@@ -200,7 +204,7 @@ void game_render(Game *g)
     particles_render(g->renderer, g->camera.scroll);
     player_render(&g->player, g->renderer);
     if (!g->player.is_dying)
-        rope_render(&g->rope, g->renderer);
+        rope_render(&g->rope, g->renderer, g->camera.scroll);
     bullets_render(g->renderer);
     enemies_render(g->renderer, g->camera.scroll);
 

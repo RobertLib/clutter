@@ -1,4 +1,5 @@
 #include "player.h"
+#include <math.h>
 
 void player_init(Player *p, float x, float y)
 {
@@ -6,6 +7,9 @@ void player_init(Player *p, float x, float y)
     p->y = y;
     p->w = PLAYER_W;
     p->h = PLAYER_H;
+    p->vx = PLANE_FORWARD_SPEED;
+    p->vy = 0.0f;
+    p->angle = 0.0f;
     p->hp = PLAYER_MAX_HP;
     timer_clear(&p->hit_cooldown);
     p->facing = 1;
@@ -24,29 +28,57 @@ void player_update(Player *p, float dt)
 
     timer_tick(&p->hit_cooldown, dt);
 
+    // Plane always flies forward; LEFT/RIGHT change direction with inertia
+    float target_vx = PLANE_FORWARD_SPEED * (float)p->facing;
     if (k[SDL_SCANCODE_LEFT])
     {
-        p->x -= PLAYER_SPEED * dt;
+        target_vx = -PLANE_FORWARD_SPEED;
         p->facing = -1;
     }
-
     if (k[SDL_SCANCODE_RIGHT])
     {
-        p->x += PLAYER_SPEED * dt;
+        target_vx = PLANE_FORWARD_SPEED;
         p->facing = 1;
     }
+    p->vx += (target_vx - p->vx) * 6.0f * dt;
 
+    // Vertical: thrust + gravity + drag
     if (k[SDL_SCANCODE_UP])
-        p->y -= PLAYER_SPEED * dt;
-
+        p->vy -= PLANE_VY_ACCEL * dt;
     if (k[SDL_SCANCODE_DOWN])
-        p->y += PLAYER_SPEED * dt;
+        p->vy += PLANE_VY_ACCEL * dt;
 
-    // clamp to screen bounds
+    p->vy += PLANE_GRAVITY * dt;
+    p->vy -= p->vy * PLANE_VY_DRAG * dt;
+
+    if (p->vy > PLANE_MAX_VY)
+        p->vy = PLANE_MAX_VY;
+    if (p->vy < -PLANE_MAX_VY)
+        p->vy = -PLANE_MAX_VY;
+
+    p->x += p->vx * dt;
+    p->y += p->vy * dt;
+
+    // Visual pitch angle derived from velocity
+    p->angle = atan2f(p->vy, fabsf(p->vx) + 1.0f);
+    if (p->angle > PLANE_MAX_ANGLE)
+        p->angle = PLANE_MAX_ANGLE;
+    if (p->angle < -PLANE_MAX_ANGLE)
+        p->angle = -PLANE_MAX_ANGLE;
+
+    // Vertical screen clamp
     if (p->y < 0.0f)
+    {
         p->y = 0.0f;
+        if (p->vy < 0.0f)
+            p->vy = 0.0f;
+    }
     if (p->y > (float)(SCREEN_H - PLAYER_H))
+    {
         p->y = (float)(SCREEN_H - PLAYER_H);
+        if (p->vy > 0.0f)
+            p->vy = 0.0f;
+    }
 }
 
 void player_render(Player *p, SDL_Renderer *r)
@@ -58,9 +90,29 @@ void player_render(Player *p, SDL_Renderer *r)
     if (timer_running(&p->hit_cooldown) && (int)(p->hit_cooldown.t * 10.0f) % 2 == 0)
         return;
 
-    SDL_FRect rect = {p->x, p->y, p->w, p->h};
-    SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
-    SDL_RenderFillRect(r, &rect);
+    // Draw rotated rectangle using two triangles
+    float cx = p->x + p->w * 0.5f;
+    float cy = p->y + p->h * 0.5f;
+    float a = p->angle * (float)p->facing;
+    float sa = sinf(a);
+    float ca = cosf(a);
+    float hw = p->w * 0.5f;
+    float hh = p->h * 0.5f;
+
+    // Rotate all 4 corners around center
+#define RX(lx, ly) (cx + (lx) * ca - (ly) * sa)
+#define RY(lx, ly) (cy + (lx) * sa + (ly) * ca)
+    SDL_FColor col = {1.0f, 220 / 255.f, 0.0f, 1.0f};
+    SDL_Vertex verts[4] = {
+        {{RX(-hw, -hh), RY(-hw, -hh)}, col, {0, 0}},
+        {{RX(hw, -hh), RY(hw, -hh)}, col, {0, 0}},
+        {{RX(hw, hh), RY(hw, hh)}, col, {0, 0}},
+        {{RX(-hw, hh), RY(-hw, hh)}, col, {0, 0}},
+    };
+#undef RX
+#undef RY
+    int idx[] = {0, 1, 2, 0, 2, 3};
+    SDL_RenderGeometry(r, NULL, verts, 4, idx, 6);
 }
 
 void player_take_hit(Player *p)
